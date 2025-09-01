@@ -87,10 +87,7 @@ def generate_story_chapter(story_context, world_bible, user_choice):
 
 
 def generate_image_stability(prompt):
-    """
-    Generates an image using the Stability.ai API
-    -- WITH IN-APP DEBUGGER --
-    """
+    """Generates an image using the Stability.ai API with robust error handling."""
     if not STABILITY_API_KEY:
         st.warning("Stability API Key not found. Image generation is disabled.")
         return None
@@ -113,29 +110,28 @@ def generate_image_stability(prompt):
     with st.spinner("The Stability artist is painting the scene..."):
         try:
             response = requests.post(API_URL, headers=headers, json=payload)
+            response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
 
-            # --- IN-APP DEBUGGER ---
-            st.info("API Response Received from Stability.ai. See details below:")
-            st.write(f"Status Code: {response.status_code}")
-            st.write("Full API Response Body:")
-            try:
-                # Try to display as formatted JSON
-                st.json(response.json())
-            except json.JSONDecodeError:
-                # If the response is not JSON, display as raw text
-                st.code(response.text)
-            # --- END OF DEBUGGER ---
-
-            response.raise_for_status()
             data = response.json()
             image_b64 = data["artifacts"][0]["base64"]
             return Image.open(io.BytesIO(base64.b64decode(image_b64)))
 
         except requests.exceptions.HTTPError as e:
-            st.error(f"Caught an HTTP Error: {e.response.status_code}")
+            st.error(f"HTTP Error from Stability API: {e.response.status_code}")
+            try:
+                # Show the detailed error message from the API
+                error_details = e.response.json()
+                st.error("API Response:")
+                st.json(error_details)
+            except json.JSONDecodeError:
+                st.error("Raw API Response Text:")
+                st.code(e.response.text)
+            return None
+        except (KeyError, IndexError) as e:
+            st.error(f"Error parsing Stability API response. The expected data structure was not found. Error: {e}")
             return None
         except Exception as e:
-            st.error(f"An unexpected error occurred: {e}")
+            st.error(f"An unexpected error occurred with the Stability API: {e}")
             return None
 
 
