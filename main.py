@@ -1,4 +1,4 @@
-# app.py
+# main.py
 
 import streamlit as st
 import google.generativeai as genai
@@ -15,9 +15,10 @@ import hashlib
 # Load environment variables at the very beginning of the script.
 load_dotenv()
 
+
 # --- 1. Configuration and Setup ---
 
-# CRITICAL FIX: set_page_config() must be the first Streamlit command.
+# set_page_config() must be the first Streamlit command.
 st.set_page_config(layout="wide", page_title="The Multimodal Storyteller", page_icon="🪶")
 
 
@@ -26,9 +27,11 @@ st.set_page_config(layout="wide", page_title="The Multimodal Storyteller", page_
 def check_login(username, password):
     """Checks credentials against st.secrets (for cloud) or local .env file."""
     try:
+        # First, try to get credentials from Streamlit's cloud secrets
         usernames = st.secrets["auth"]["usernames"]
         passwords = st.secrets["auth"]["passwords"]
     except (KeyError, FileNotFoundError):
+        # If cloud secrets fail, fall back to local environment variables
         print("INFO: Could not find Streamlit secrets. Falling back to .env file for credentials.")
         try:
             usernames = json.loads(os.getenv("APP_USERNAMES"))
@@ -143,10 +146,18 @@ def generate_story_chapter(story_context, world_bible, user_choice):
 
 
 def generate_image_stability(prompt):
-    """Generates an image using the Stability.ai API with improved debugging."""
+    """
+    Generates an image using the Stability.ai API
+    -- WITH ADDED DEBUGGING PRINT STATEMENTS --
+    """
+    print("--- DEBUG: Starting image generation function. ---")
+
     if not STABILITY_API_KEY:
         st.warning("Stability API Key not found. Image generation is disabled.")
+        print("--- DEBUG: FAILED at step 1: Stability API Key is missing or empty. ---")
         return None
+
+    print("--- DEBUG: Step 1 PASSED: Stability API Key was found. ---")
 
     API_URL = "https://api.stability.ai/v1/generation/stable-diffusion-v1-6/text-to-image"
     headers = {
@@ -165,12 +176,23 @@ def generate_image_stability(prompt):
 
     with st.spinner("The Stability artist is painting the scene..."):
         try:
+            print("--- DEBUG: Step 2: Sending request to Stability API... ---")
             response = requests.post(API_URL, headers=headers, json=payload)
-            response.raise_for_status()
+            print(f"--- DEBUG: Step 3: Received response with Status Code: {response.status_code} ---")
+
+            response.raise_for_status()  # This will raise an error for bad responses (4xx or 5xx)
+
+            print("--- DEBUG: Step 4: Status code was OK. Parsing JSON data... ---")
             data = response.json()
+
+            print("--- DEBUG: Step 5: JSON data parsed. Accessing image data... ---")
             image_b64 = data["artifacts"][0]["base64"]
+
+            print("--- DEBUG: Step 6: Image data found. Decoding and returning image. SUCCESS! ---")
             return Image.open(io.BytesIO(base64.b64decode(image_b64)))
+
         except requests.exceptions.HTTPError as e:
+            print(f"--- DEBUG: FAILED with HTTPError: {e} ---")
             st.error(f"HTTP Error from Stability API: {e.response.status_code}")
             try:
                 error_details = e.response.json()
@@ -181,12 +203,14 @@ def generate_image_stability(prompt):
                 st.text(e.response.text)
             return None
         except (KeyError, IndexError) as e:
+            print(f"--- DEBUG: FAILED with KeyError or IndexError: {e} ---")
             st.error(f"Error parsing Stability API response. Expected data structure not found. Error: {e}")
             st.error(
                 "To debug, check the received data structure below against the code's expectation ('artifacts'[0]['base64']):")
             st.json(response.json())
             return None
         except Exception as e:
+            print(f"--- DEBUG: FAILED with an unexpected exception: {e} ---")
             st.error(f"An unexpected error occurred with the Stability API: {e}")
             return None
 
@@ -198,7 +222,7 @@ def text_to_speech_player(text):
         <script>
             const synth = window.speechSynthesis;
             if (synth.speaking) {{ synth.cancel(); }}
-            const utterance = new SpeechSynthesisUtterance("{safe_text}");
+            const utterance = new SpeechSynthesisUtterterance("{safe_text}");
             utterance.pitch = 1;
             utterance.rate = 0.9;
             synth.speak(utterance);
