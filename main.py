@@ -10,7 +10,6 @@ import os
 from dotenv import load_dotenv
 import streamlit.components.v1 as components
 import base64
-import hashlib
 
 # Load environment variables at the very beginning of the script.
 load_dotenv()
@@ -20,64 +19,6 @@ load_dotenv()
 
 # set_page_config() must be the first Streamlit command.
 st.set_page_config(layout="wide", page_title="The Multimodal Storyteller", page_icon="🪶")
-
-
-# --- 0. Login Authentication ---
-
-def check_login(username, password):
-    """Checks credentials against st.secrets (for cloud) or local .env file."""
-    try:
-        # First, try to get credentials from Streamlit's cloud secrets
-        usernames = st.secrets["auth"]["usernames"]
-        passwords = st.secrets["auth"]["passwords"]
-    except (KeyError, FileNotFoundError):
-        # If cloud secrets fail, fall back to local environment variables
-        print("INFO: Could not find Streamlit secrets. Falling back to .env file for credentials.")
-        try:
-            usernames = json.loads(os.getenv("APP_USERNAMES"))
-            passwords = json.loads(os.getenv("APP_PASSWORDS"))
-        except (TypeError, json.JSONDecodeError):
-            st.error("Local credentials not found or malformed in .env file.")
-            return False
-
-    hashed_input = hashlib.sha256(password.encode()).hexdigest()
-    if username in usernames:
-        index = usernames.index(username)
-        return hashed_input == passwords[index]
-    return False
-
-
-# Initialize session states
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "rerun_trigger" not in st.session_state:
-    st.session_state.rerun_trigger = False
-
-# Show login form if not authenticated
-if not st.session_state.authenticated:
-    st.sidebar.title("🔐 Login")
-    username = st.sidebar.text_input("Username")
-    password = st.sidebar.text_input("Password", type="password")
-    login_button = st.sidebar.button("Login")
-
-    if login_button:
-        if check_login(username, password):
-            st.session_state.authenticated = True
-            st.session_state.user = username
-            st.session_state.rerun_trigger = True
-        else:
-            st.sidebar.error("Invalid credentials. Try again.")
-
-    if not st.session_state.authenticated:
-        st.stop()
-
-if st.session_state.rerun_trigger:
-    st.session_state.rerun_trigger = False
-    st.rerun()
-
-st.sidebar.success(f"Welcome, {st.session_state.user} 🪶")
-
-# --- (Rest of the Configuration) ---
 
 def load_api_keys():
     """Loads API keys securely from Streamlit secrets or a .env file."""
@@ -173,7 +114,7 @@ def generate_image_stability(prompt):
         try:
             response = requests.post(API_URL, headers=headers, json=payload)
 
-            # --- NEW IN-APP DEBUGGER ---
+            # --- IN-APP DEBUGGER ---
             st.info("API Response Received from Stability.ai. See details below:")
             st.write(f"Status Code: {response.status_code}")
             st.write("Full API Response Body:")
@@ -183,7 +124,7 @@ def generate_image_stability(prompt):
             except json.JSONDecodeError:
                 # If the response is not JSON, display as raw text
                 st.code(response.text)
-            # --- END OF NEW DEBUGGER ---
+            # --- END OF DEBUGGER ---
 
             response.raise_for_status()
             data = response.json()
@@ -191,7 +132,6 @@ def generate_image_stability(prompt):
             return Image.open(io.BytesIO(base64.b64decode(image_b64)))
 
         except requests.exceptions.HTTPError as e:
-            # This block will now only catch errors if they weren't displayed above
             st.error(f"Caught an HTTP Error: {e.response.status_code}")
             return None
         except Exception as e:
@@ -221,6 +161,7 @@ st.markdown(
     "Co-create a unique saga with AI. Forge a world, make choices, and bring your story to life with generated art and audio."
 )
 
+# Initialize session state for the app's logic
 if 'app_stage' not in st.session_state:
     st.session_state.app_stage = "world_forge"
     st.session_state.world_bible = None
@@ -290,15 +231,17 @@ elif st.session_state.app_stage == "story_cycle":
                     st.session_state.latest_choices = ai_response["next_choices"]
                     st.rerun()
 
-st.markdown("---")
-if st.session_state.app_stage != "world_forge":
-    if st.button("Start a New Saga (Restart)"):
-        keys_to_clear = ['app_stage', 'world_bible', 'story_chapters', 'latest_choices']
-        for key in keys_to_clear:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.rerun()
+# Add a restart button to the sidebar for easy access
+st.sidebar.markdown("---")
+st.sidebar.header("Controls")
+if st.sidebar.button("Start a New Saga (Restart)"):
+    keys_to_clear = ['app_stage', 'world_bible', 'story_chapters', 'latest_choices']
+    for key in keys_to_clear:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.rerun()
 
+st.markdown("---")
 st.markdown("""
 <div style="text-align: center; padding: 10px;">
     <p>Created by <b>Karthik</b></p>
