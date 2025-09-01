@@ -188,6 +188,10 @@ elif st.session_state.app_stage == "story_start":
         if st.form_submit_button("Start the Saga") and initial_prompt:
             st.session_state.story_chapters.append({"text": initial_prompt, "image": None})
             ai_response = generate_story_chapter("", st.session_state.world_bible, initial_prompt)
+            
+            # --- DEBUG LINE TO CHECK GEMINI'S OUTPUT ---
+            st.json(ai_response)
+            
             if ai_response:
                 new_image = generate_image_stability(ai_response["image_prompt"])
                 st.session_state.story_chapters[0]["image"] = new_image
@@ -217,8 +221,11 @@ elif st.session_state.app_stage == "story_cycle":
         with st.form("choice_form"):
             choice_made = st.radio("Choose a path:", st.session_state.latest_choices, key="choice_radio")
             if st.form_submit_button("Weave Next Chapter"):
-                story_so_far = " ".join([ch['text'] for ch in st.session_state.story_chapters])
+                story_so_far = " ".join([ch['text'] for ch in st.session_tate.story_chapters])
                 ai_response = generate_story_chapter(story_so_far, st.session_state.world_bible, choice_made)
+
+                # --- DEBUG LINE TO CHECK GEMINI'S OUTPUT ---
+                st.json(ai_response)
 
                 if ai_response:
                     new_image = generate_image_stability(ai_response["image_prompt"])
