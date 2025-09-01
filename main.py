@@ -198,7 +198,8 @@ elif st.session_state.app_stage == "story_start":
                 st.session_state.story_chapters.append({"text": ai_response["narrative_chapter"], "image": None})
                 st.session_state.latest_choices = ai_response["next_choices"]
                 st.session_state.app_stage = "story_cycle"
-                st.rerun()
+                # --- TEMPORARILY DISABLED FOR DEBUGGING ---
+                # st.rerun()
 
 elif st.session_state.app_stage == "story_cycle":
     st.header("Your Saga Unfolds...")
@@ -232,7 +233,8 @@ elif st.session_state.app_stage == "story_cycle":
                     st.session_state.story_chapters.append(
                         {"text": ai_response["narrative_chapter"], "image": new_image})
                     st.session_state.latest_choices = ai_response["next_choices"]
-                    st.rerun()
+                    # --- TEMPORARILY DISABLED FOR DEBUGGING ---
+                    # st.rerun()
 
 # Add a restart button to the sidebar for easy access
 st.sidebar.markdown("---")
@@ -250,4 +252,3 @@ st.markdown("""
     <p>Created by <b>Karthik</b></p>
 </div>
 """, unsafe_allow_html=True)
-
