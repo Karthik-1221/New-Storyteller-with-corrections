@@ -148,16 +148,11 @@ def generate_story_chapter(story_context, world_bible, user_choice):
 def generate_image_stability(prompt):
     """
     Generates an image using the Stability.ai API
-    -- WITH ADDED DEBUGGING PRINT STATEMENTS --
+    -- WITH IN-APP DEBUGGER --
     """
-    print("--- DEBUG: Starting image generation function. ---")
-
     if not STABILITY_API_KEY:
         st.warning("Stability API Key not found. Image generation is disabled.")
-        print("--- DEBUG: FAILED at step 1: Stability API Key is missing or empty. ---")
         return None
-
-    print("--- DEBUG: Step 1 PASSED: Stability API Key was found. ---")
 
     API_URL = "https://api.stability.ai/v1/generation/stable-diffusion-v1-6/text-to-image"
     headers = {
@@ -176,42 +171,31 @@ def generate_image_stability(prompt):
 
     with st.spinner("The Stability artist is painting the scene..."):
         try:
-            print("--- DEBUG: Step 2: Sending request to Stability API... ---")
             response = requests.post(API_URL, headers=headers, json=payload)
-            print(f"--- DEBUG: Step 3: Received response with Status Code: {response.status_code} ---")
 
-            response.raise_for_status()  # This will raise an error for bad responses (4xx or 5xx)
+            # --- NEW IN-APP DEBUGGER ---
+            st.info("API Response Received from Stability.ai. See details below:")
+            st.write(f"Status Code: {response.status_code}")
+            st.write("Full API Response Body:")
+            try:
+                # Try to display as formatted JSON
+                st.json(response.json())
+            except json.JSONDecodeError:
+                # If the response is not JSON, display as raw text
+                st.code(response.text)
+            # --- END OF NEW DEBUGGER ---
 
-            print("--- DEBUG: Step 4: Status code was OK. Parsing JSON data... ---")
+            response.raise_for_status()
             data = response.json()
-
-            print("--- DEBUG: Step 5: JSON data parsed. Accessing image data... ---")
             image_b64 = data["artifacts"][0]["base64"]
-
-            print("--- DEBUG: Step 6: Image data found. Decoding and returning image. SUCCESS! ---")
             return Image.open(io.BytesIO(base64.b64decode(image_b64)))
 
         except requests.exceptions.HTTPError as e:
-            print(f"--- DEBUG: FAILED with HTTPError: {e} ---")
-            st.error(f"HTTP Error from Stability API: {e.response.status_code}")
-            try:
-                error_details = e.response.json()
-                st.error("API Response:")
-                st.json(error_details)
-            except json.JSONDecodeError:
-                st.error("Raw API Response Text:")
-                st.text(e.response.text)
-            return None
-        except (KeyError, IndexError) as e:
-            print(f"--- DEBUG: FAILED with KeyError or IndexError: {e} ---")
-            st.error(f"Error parsing Stability API response. Expected data structure not found. Error: {e}")
-            st.error(
-                "To debug, check the received data structure below against the code's expectation ('artifacts'[0]['base64']):")
-            st.json(response.json())
+            # This block will now only catch errors if they weren't displayed above
+            st.error(f"Caught an HTTP Error: {e.response.status_code}")
             return None
         except Exception as e:
-            print(f"--- DEBUG: FAILED with an unexpected exception: {e} ---")
-            st.error(f"An unexpected error occurred with the Stability API: {e}")
+            st.error(f"An unexpected error occurred: {e}")
             return None
 
 
@@ -222,7 +206,7 @@ def text_to_speech_player(text):
         <script>
             const synth = window.speechSynthesis;
             if (synth.speaking) {{ synth.cancel(); }}
-            const utterance = new SpeechSynthesisUtterterance("{safe_text}");
+            const utterance = new SpeechSynthesisUtterance("{safe_text}");
             utterance.pitch = 1;
             utterance.rate = 0.9;
             synth.speak(utterance);
