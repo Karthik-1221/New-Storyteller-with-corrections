@@ -221,7 +221,7 @@ elif st.session_state.app_stage == "story_cycle":
         with st.form("choice_form"):
             choice_made = st.radio("Choose a path:", st.session_state.latest_choices, key="choice_radio")
             if st.form_submit_button("Weave Next Chapter"):
-                story_so_far = " ".join([ch['text'] for ch in st.session_tate.story_chapters])
+                story_so_far = " ".join([ch['text'] for ch in st.session_state.story_chapters])
                 ai_response = generate_story_chapter(story_so_far, st.session_state.world_bible, choice_made)
 
                 # --- DEBUG LINE TO CHECK GEMINI'S OUTPUT ---
@@ -250,3 +250,4 @@ st.markdown("""
     <p>Created by <b>Karthik</b></p>
 </div>
 """, unsafe_allow_html=True)
+
