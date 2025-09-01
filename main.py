@@ -63,6 +63,7 @@ def generate_story_chapter(story_context, world_bible, user_choice):
     """Generates the next narrative chapter, choices, and image prompt."""
     model = genai.GenerativeModel('gemini-1.5-flash-latest')
     generation_config = genai.types.GenerationConfig(temperature=0.9)
+    # CORRECTED PROMPT: Explicitly asks for a valid JSON array of strings for choices.
     prompt = f"""
     You are a multi-persona Storytelling Engine. Follow these steps precisely.
     The user's choice for the last chapter was: "{user_choice}".
@@ -70,7 +71,7 @@ def generate_story_chapter(story_context, world_bible, user_choice):
     The secret World Bible for this universe is: "{world_bible}".
 
     Step 1: Act as a Literary Artist. Write a rich, descriptive paragraph expanding on the user's choice.
-    Step 2: Act as a Plot Theorist. Based on the new paragraph, generate three distinct, single-sentence plot choices for the user. One must be a 'Wildcard'.
+    Step 2: Act as a Plot Theorist. Based on the new paragraph, generate three distinct, single-sentence plot choices for the user. One must be a 'Wildcard'. Format these choices as a simple JSON array of strings.
     Step 3: Act as an Art Director. Based on the paragraph from Step 1, write a concise, descriptive prompt for an AI image generator (comma-separated keywords).
     Step 4: Format your entire response as a single, raw JSON object with NO markdown formatting, using these exact keys: "narrative_chapter", "next_choices", and "image_prompt".
     """
@@ -92,7 +93,10 @@ def generate_image_stability(prompt):
         st.warning("Stability API Key not found. Image generation is disabled.")
         return None
 
-    API_URL = "https://api.stability.ai/v1/generation/stable-diffusion-v1-6/text-to-image"
+    # CORRECTED MODEL ID: Using a valid, current model.
+    engine_id = "stable-diffusion-xl-1024-v1-0"
+    API_URL = f"https://api.stability.ai/v1/generation/{engine_id}/text-to-image"
+
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -101,7 +105,7 @@ def generate_image_stability(prompt):
     payload = {
         "text_prompts": [{"text": f"cinematic, epic, high detail, masterpiece, {prompt}"}],
         "cfg_scale": 7,
-        "height": 768,
+        "height": 1024,
         "width": 1024,
         "samples": 1,
         "steps": 30,
@@ -189,17 +193,13 @@ elif st.session_state.app_stage == "story_start":
             st.session_state.story_chapters.append({"text": initial_prompt, "image": None})
             ai_response = generate_story_chapter("", st.session_state.world_bible, initial_prompt)
             
-            # --- DEBUG LINE TO CHECK GEMINI'S OUTPUT ---
-            st.json(ai_response)
-            
             if ai_response:
                 new_image = generate_image_stability(ai_response["image_prompt"])
                 st.session_state.story_chapters[0]["image"] = new_image
                 st.session_state.story_chapters.append({"text": ai_response["narrative_chapter"], "image": None})
                 st.session_state.latest_choices = ai_response["next_choices"]
                 st.session_state.app_stage = "story_cycle"
-                # --- TEMPORARILY DISABLED FOR DEBUGGING ---
-                # st.rerun()
+                st.rerun()
 
 elif st.session_state.app_stage == "story_cycle":
     st.header("Your Saga Unfolds...")
@@ -225,16 +225,12 @@ elif st.session_state.app_stage == "story_cycle":
                 story_so_far = " ".join([ch['text'] for ch in st.session_state.story_chapters])
                 ai_response = generate_story_chapter(story_so_far, st.session_state.world_bible, choice_made)
 
-                # --- DEBUG LINE TO CHECK GEMINI'S OUTPUT ---
-                st.json(ai_response)
-
                 if ai_response:
                     new_image = generate_image_stability(ai_response["image_prompt"])
                     st.session_state.story_chapters.append(
                         {"text": ai_response["narrative_chapter"], "image": new_image})
                     st.session_state.latest_choices = ai_response["next_choices"]
-                    # --- TEMPORARILY DISABLED FOR DEBUGGING ---
-                    # st.rerun()
+                    st.rerun()
 
 # Add a restart button to the sidebar for easy access
 st.sidebar.markdown("---")
